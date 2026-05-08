@@ -10,11 +10,10 @@ A Raycast extension that appends a timestamped bullet under a topic in today's O
 ### `raycast-scripts/`
 [Raycast script commands](https://manual.raycast.com/script-commands) — single-file shell scripts with Raycast metadata at the top.
 
-- **`AgStacked/`** — internal AgStacked workflows (e.g. `[ag]-deploy-main.sh` to deploy the main app).
 - **`Utils/`** — general-purpose utilities (e.g. `youtube-rss-ify.sh` to turn a YouTube channel URL into its RSS feed).
 
 ## Using the script commands
-Point Raycast at this folder under *Extensions → Script Commands → Add Directories*, then select `raycast-scripts/AgStacked` and/or `raycast-scripts/Utils`.
+Point Raycast at this folder under *Extensions → Script Commands → Add Directories*, then select `raycast-scripts/Utils`.
 
 ## Using the extension
 From `quicknote/`:
