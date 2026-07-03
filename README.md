@@ -1,3 +1,5 @@
+![Jonik's Raycast Helpers — Raycast extensions and script commands for Obsidian workflows](banner.png)
+
 # Jonik's Raycast Helpers
 
 A small collection of [Raycast](https://www.raycast.com/) extensions and script commands I use day to day. Everything writes to my Obsidian vault.
