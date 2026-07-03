@@ -1,4 +1,4 @@
-import { Form, ActionPanel, Action, showToast, Toast, getPreferenceValues, popToRoot } from "@raycast/api";
+import { Form, ActionPanel, Action, showToast, Toast, getPreferenceValues, popToRoot, LaunchProps } from "@raycast/api";
 import { useState, useEffect } from "react";
 import * as fs from "fs";
 import * as path from "path";
@@ -76,7 +76,10 @@ function findBlockEnd(lines: string[], blockStart: number, sectionEnd: number): 
 function findLatestTimestamp(lines: string[], blockStart: number, blockEnd: number): string | undefined {
   let latest: string | undefined;
   for (let i = blockStart + 1; i < blockEnd; i++) {
-    const match = lines[i].match(/^\s*-\s+(?:\[[ xX]\]\s+)?(\d{2}:\d{2})\b/);
+    const line = lines[i].trim();
+    // Match both the legacy bullet form (`- [ ] 14:33 - ...`) and the inline
+    // italic form (`_🟢 14:33_ - text`).
+    const match = line.match(/^-\s+(?:\[[ xX]\]\s+)?(\d{2}:\d{2})\b/) ?? line.match(/^_[^_]*(\d{2}:\d{2})[^_]*_/);
     if (match && (!latest || match[1] > latest)) latest = match[1];
   }
   return latest;
@@ -123,7 +126,16 @@ function findInsertionLine(lines: string[], entryLineIndex: number, sectionEnd: 
   return lastNonEmpty;
 }
 
-export default function Command() {
+interface QuicknoteValues {
+  entry: string;
+  mood: string;
+  todo: boolean;
+  note: string;
+}
+
+export default function Command(props: LaunchProps<{ draftValues: QuicknoteValues }>) {
+  const { draftValues } = props;
+
   const preferences = getPreferenceValues<Preferences>();
   const dailyNotePath = getDailyNotePath(preferences.vaultPath, preferences.dailyNotesFolder);
 
@@ -180,10 +192,14 @@ export default function Command() {
       const entryLineIndex = parseInt(values.entry, 10);
       const insertAfter = findInsertionLine(lines, entryLineIndex, sectionEnd);
 
-      const checkboxPrefix = values.todo ? "[ ] " : "";
       const moodPrefix = values.mood ? `${values.mood} ` : "";
-      const newBullet = `- ${checkboxPrefix}${getCurrentTime()} - ${moodPrefix}${text}`;
-      lines.splice(insertAfter + 1, 0, newBullet);
+      const time = getCurrentTime();
+
+      // Todos keep the legacy bullet form so they stay tickable in Obsidian;
+      // everything else is a single inline line: `_🟢 13:32_ - text`.
+      const newLine = values.todo ? `- [ ] ${time} - ${moodPrefix}${text}` : `_${moodPrefix}${time}_ - ${text}`;
+
+      lines.splice(insertAfter + 1, 0, newLine);
 
       fs.writeFileSync(dailyNotePath, lines.join("\n"), "utf-8");
 
@@ -197,6 +213,7 @@ export default function Command() {
   return (
     <Form
       isLoading={isLoading}
+      enableDrafts={true}
       actions={
         !error ? (
           <ActionPanel>
@@ -209,12 +226,12 @@ export default function Command() {
         <Form.Description text={error} />
       ) : (
         <>
-          <Form.Dropdown id="entry" title="Topic" defaultValue={defaultEntry}>
+          <Form.Dropdown id="entry" title="Topic" defaultValue={draftValues?.entry ?? defaultEntry}>
             {entries.map((entry) => (
               <Form.Dropdown.Item key={entry.lineIndex} value={String(entry.lineIndex)} title={entry.display} />
             ))}
           </Form.Dropdown>
-          <Form.Dropdown id="mood" title="Mood" defaultValue="" autoFocus>
+          <Form.Dropdown id="mood" title="Reflection" defaultValue={draftValues?.mood ?? ""} autoFocus>
             <Form.Dropdown.Item value="" title="None" />
             <Form.Dropdown.Item value="🏁" title="🏁 Start" />
             <Form.Dropdown.Item value="🟢" title="🟢 Good Progress" />
@@ -224,8 +241,13 @@ export default function Command() {
             <Form.Dropdown.Item value="✅" title="✅ Completed" />
             <Form.Dropdown.Item value="💪" title="💪 Things Are Looking Great!" />
           </Form.Dropdown>
-          <Form.Checkbox id="todo" label="Todo" defaultValue={false} />
-          <Form.TextArea id="note" title="Note" placeholder="Write your reflection..." />
+          <Form.Checkbox id="todo" label="Todo" defaultValue={draftValues?.todo ?? false} />
+          <Form.TextArea
+            id="note"
+            title="Note"
+            placeholder="Write your reflection..."
+            defaultValue={draftValues?.note ?? ""}
+          />
         </>
       )}
     </Form>
